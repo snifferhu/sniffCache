@@ -36,7 +36,7 @@ public interface CacheMap {
 
     <T> Collection<T> values(Class<T> clazz);
 
-    <T> List<T> getAll(Object... fields);
+    <T> List<T> getAll(Class<T> clazz,Object... fields);
 
 //    /**
 //     * 缓存勾搭数据源查询，混合使用方法

@@ -8,6 +8,7 @@ import org.sniff.cache.template.KeyData;
 import redis.clients.jedis.ScanResult;
 
 import java.util.*;
+import java.util.Map.Entry;
 
 /**
  * @auth snifferhu
@@ -60,7 +61,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
     @Override
     public boolean containsValue(Object value) {
-        ScanResult<Map.Entry<String, String>> scanResult = jedisAdapter.hscan(cacheKey, "0");
+        ScanResult<Entry<String, String>> scanResult = jedisAdapter.hscan(cacheKey, "0");
         if (scanResult.getResult().contains(value)) {
             return true;
         } else if (!scanResult.getStringCursor().equals("0")) {
@@ -70,7 +71,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         }
     }
 
-    private boolean containsValue(ScanResult<Map.Entry<String, String>> scanResult, Object value) {
+    private boolean containsValue(ScanResult<Entry<String, String>> scanResult, Object value) {
         if (scanResult.getStringCursor().equals("0")) {
             return scanResult.getResult().contains(value);
         } else {
@@ -159,13 +160,26 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         return valueList;
     }
 
-//    public ScanResult<Map.Entry<String, String>> entrySet() {
-//        return jedisAdapter.hscan(cacheKey,"10");
-//    }
-
-
     @Override
-    public <T> List<T> getAll(Object... fields){
-        return null;
+    public <T> List<T> getAll(Class<T> clazz, Object... fields) {
+        ScanResult<Entry<String, String>> scanResult = jedisAdapter.hscan(cacheKey, "0");
+        return scanAll(scanResult, clazz, fields);
+    }
+
+    private <T> List<T> scanAll(ScanResult<Entry<String, String>> scanResult, Class<T> clazz, Object... fields) {
+        List<T> resultList = new ArrayList<>();
+        for (Entry<String, String> entry : scanResult.getResult()) {
+            for (Object field : fields) {
+                if (entry.getValue().equals(field)) {
+                    resultList.add(gson.fromJson(entry.getValue(), clazz));
+                }
+            }
+        }
+        if ("0".equals(scanResult.getStringCursor())) {
+            return resultList;
+        } else {
+            resultList.addAll(scanAll(jedisAdapter.hscan(cacheKey, scanResult.getStringCursor()), clazz, fields));
+            return resultList;
+        }
     }
 }
