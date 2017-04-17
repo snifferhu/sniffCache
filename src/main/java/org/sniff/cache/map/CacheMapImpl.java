@@ -60,26 +60,6 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
     }
 
     @Override
-    public boolean containsValue(Object value) {
-        ScanResult<Entry<String, String>> scanResult = jedisAdapter.hscan(cacheKey, "0");
-        if (scanResult.getResult().contains(value)) {
-            return true;
-        } else if (!scanResult.getStringCursor().equals("0")) {
-            return containsValue(scanResult, value);
-        } else {
-            return false;
-        }
-    }
-
-    private boolean containsValue(ScanResult<Entry<String, String>> scanResult, Object value) {
-        if (scanResult.getStringCursor().equals("0")) {
-            return scanResult.getResult().contains(value);
-        } else {
-            return containsValue(scanResult, value);
-        }
-    }
-
-    @Override
     public <T> T get(Object field, Class<T> clazz) {
         String value;
         if (field instanceof String) {
@@ -111,8 +91,18 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
 
     @Override
-    public String putAll(Map m) {
-        return jedisAdapter.hmset(cacheKey, m);
+    public <V> String putAll(Map<String, V> m) {
+        Map<String, String> transformMap = new HashMap<>();
+        if (m != null) {
+            if (m.values().toArray()[0] instanceof String) {
+                return jedisAdapter.hmset(cacheKey, transformMap);
+            }
+            for (Entry<String, V> entry : m.entrySet()) {
+                transformMap.put(entry.getKey(), gson.toJson(entry.getValue()));
+            }
+            return jedisAdapter.hmset(cacheKey, transformMap);
+        }
+        return null;
     }
 
 
@@ -160,6 +150,27 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         return valueList;
     }
 
+
+    @Override
+    public boolean containsValue(Object value) {
+        ScanResult<Entry<String, String>> scanResult = jedisAdapter.hscan(cacheKey, "0");
+        return scanOne(scanResult, gson.toJson(value));
+    }
+
+    private boolean scanOne(ScanResult<Entry<String, String>> scanResult, String value) {
+        boolean isContains = false;
+        for (Entry<String, String> entry : scanResult.getResult()) {
+            if (entry.getValue().equals(value)) {
+                return true;
+            }
+        }
+        if (scanResult.getStringCursor().equals("0")) {
+            return isContains;
+        } else {
+            return scanOne(jedisAdapter.hscan(cacheKey, scanResult.getStringCursor()), value);
+        }
+    }
+
     @Override
     public <T> List<T> getAll(Class<T> clazz, Object... fields) {
         ScanResult<Entry<String, String>> scanResult = jedisAdapter.hscan(cacheKey, "0");
@@ -170,7 +181,9 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         List<T> resultList = new ArrayList<>();
         for (Entry<String, String> entry : scanResult.getResult()) {
             for (Object field : fields) {
-                if (entry.getValue().equals(field)) {
+                if (field instanceof String && entry.getKey().equals(field)) {
+                    resultList.add(gson.fromJson(entry.getValue(), clazz));
+                } else if (entry.getKey().equals(gson.toJson(field))) {
                     resultList.add(gson.fromJson(entry.getValue(), clazz));
                 }
             }
@@ -180,6 +193,15 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         } else {
             resultList.addAll(scanAll(jedisAdapter.hscan(cacheKey, scanResult.getStringCursor()), clazz, fields));
             return resultList;
+        }
+    }
+
+    @Override
+    public <V> Long putIfAbsent(Object field, V value) {
+        if (field instanceof String) {
+            return jedisAdapter.hsetnx(cacheKey, String.valueOf(field), gson.toJson(value));
+        } else {
+            return jedisAdapter.hsetnx(cacheKey, gson.toJson(field), gson.toJson(value));
         }
     }
 }

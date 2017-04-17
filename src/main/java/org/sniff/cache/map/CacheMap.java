@@ -24,7 +24,7 @@ public interface CacheMap {
 
     Long remove(String... field);
 
-    String putAll(Map m);
+    <V> String putAll(Map<String, V> m);
 
     Long clear();
 
@@ -36,7 +36,9 @@ public interface CacheMap {
 
     <T> Collection<T> values(Class<T> clazz);
 
-    <T> List<T> getAll(Class<T> clazz,Object... fields);
+    <T> List<T> getAll(Class<T> clazz, Object... fields);
+
+    <V> Long putIfAbsent(Object field, V value);
 
 //    /**
 //     * 缓存勾搭数据源查询，混合使用方法
