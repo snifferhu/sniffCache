@@ -1,25 +1,42 @@
 package org.sniff.cache.map;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.Set;
 
 /**
  * @auth snifferhu
  * @date 2017/4/13 10:23
  */
 public interface CacheMap {
-    String get(String key);
+    <T> T get(Object field, Class<T> clazz);
 
-    Object put(String field, Object value);
+    <T> Long put(Object field, T value);
 
-    boolean delete(String key);
+    boolean containsValue(Object value);
 
-    boolean deleteBatch(String... fields);
+    boolean containsKey(Object key);
 
-    void putAll(Map map);
+    boolean isEmpty();
 
-    List<String> getAll(String... fields);
+    long size();
+
+    Long remove(String... field);
+
+    String putAll(Map m);
+
+    Long clear();
+
+    Set<String> keySet();
+
+    <T> Set<T> keySet(Class<T> clazz);
+
+    Collection<String> values();
+
+    <T> Collection<T> values(Class<T> clazz);
+
+    <T> List<T> getAll(Object... fields);
 
 //    /**
 //     * 缓存勾搭数据源查询，混合使用方法
