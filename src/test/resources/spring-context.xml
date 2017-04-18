@@ -9,7 +9,6 @@
           http://www.springframework.org/schema/context
           http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
-  <context:component-scan base-package="com.zhaimi.redis"/>
   <context:property-placeholder ignore-unresolvable="true" location="classpath:redis.properties"/>
 
   <!-- jedisPool配置信息 -->
@@ -26,21 +25,20 @@
     <!-- 在borrow一个jedis实例时，是否提前进行validate操作；如果为true，则得到的jedis实例均是可用的 -->
   </bean>
 
-  <bean id="jedisPool" class="redis.clients.jedis.JedisPool" destroy-method="destroy">
-    <constructor-arg ref="jedisPoolConfig"/>
-    <constructor-arg value="${redis.ip}"/>
-    <constructor-arg type="int" value="${redis.port}"/>
-    <constructor-arg type="int" value="${redis.timeout}"/>
-    <constructor-arg name="password" value="123131"/>
-  </bean>
-
-  <bean id="singleJedisAdapter" class="com.zhaimi.redis.adapter.SingleJedisAdapter">
-    <property name="pool" ref="jedisPool"/>
-  </bean>
-
-  <bean id="cacheTemplate" class="com.zhaimi.redis.RedisCacheTemplate">
-    <property name="jedisAdapter" ref="singleJedisAdapter"/>
-    <property name="lockTimeout" value="30"/>
+  <bean id="shardedJedisPool" class="redis.clients.jedis.ShardedJedisPool"  scope="singleton">
+    <constructor-arg index="0" ref="jedisPoolConfig" />
+    <constructor-arg index="1">
+      <list>
+        <bean class="redis.clients.jedis.JedisShardInfo">
+          <constructor-arg index="0" value="127.0.0.1"/>
+          <constructor-arg index="1" value="6378" type="int"/>
+        </bean>
+        <bean class="redis.clients.jedis.JedisShardInfo">
+          <constructor-arg index="0" value="127.0.0.1"/>
+          <constructor-arg index="1" value="6377" type="int"/>
+        </bean>
+      </list>
+    </constructor-arg>
   </bean>
 
 </beans>
