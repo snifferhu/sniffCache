@@ -1,5 +1,9 @@
 # sniffCache
 a cache fremawork for redis
+#背景
+- spring缺乏对于redis sharedpool的支持
+- 在项目应用中，确实需要应用sharedpool
+- 同时从企业业务稳定角度考虑，老板不让升级redis到更高版本
 
 #目的：
 - 简化缓存操作
