@@ -14,6 +14,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static junit.framework.TestCase.assertNotNull;
 import static org.springframework.test.util.AssertionErrors.assertEquals;
@@ -42,11 +43,13 @@ public class CacheMapImplTest {
                 .setWage(1800.001D)
                 .setCreateTime(new Date(1492817472001L))
                 .createStaff();
+
     }
 
 
     @Test
     public void setCacheKey() throws Exception {
+        template.getMapOperation(cacheKey).clear();
         boolean result = template.getMapOperation(cacheKey).put("id", staff.getId());
         assertTrue("setCacheKey", result);
     }
@@ -166,5 +169,10 @@ public class CacheMapImplTest {
     @Test
     public void clear() throws Exception{
         template.getMapOperation(cacheKey).clear();
+    }
+
+    @Test
+    public void testTimeUtils(){
+        System.out.println(TimeUnit.DAYS.toSeconds(1));
     }
 }

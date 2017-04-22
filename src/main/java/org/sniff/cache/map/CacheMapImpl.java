@@ -116,11 +116,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
     @Override
     public <T> String putAllForObj(T m) throws IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-//        Map<String, String> copyMap = BeanUtils.describe(m);
-//        copyMap.remove("class");
-
-        return putAllMap(serial.from(serial.to(m),new LinkedHashMap<String,String>().getClass()));
-//        return putAllMap(copyMap);
+        return putAllMap(serial.from(serial.to(m), new LinkedHashMap<String, String>().getClass()));
     }
 
     /**
@@ -135,7 +131,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         Map<String, String> resultValue = new HashMap<>();
         for (int i = 0, size = fields.length; i < size; i++) {
             String field = fields[i].getName();
-            resultValue.put(field, jedisAdapter.hget(cacheKey, field).replaceAll("\"",""));
+            resultValue.put(field, jedisAdapter.hget(cacheKey, field).replaceAll("\"", ""));
         }
         return serial.from(serial.to(resultValue), clazz);
     }
