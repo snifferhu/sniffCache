@@ -1,5 +1,6 @@
 package org.sniff.cache.map;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -10,9 +11,11 @@ import java.util.Set;
  * @date 2017/4/13 10:23
  */
 public interface CacheMap {
+    String get(Object field);
+
     <T> T get(Object field, Class<T> clazz);
 
-    <T> Long put(Object field, T value);
+    <T> boolean put(Object field, T value);
 
     boolean containsValue(Object value);
 
@@ -22,11 +25,15 @@ public interface CacheMap {
 
     long size();
 
-    Long remove(String... field);
+    boolean remove(String... field);
 
-    <V> String putAll(Map<String, V> m);
+    <T> String putAllForObj(T m) throws IllegalAccessException, NoSuchMethodException, InvocationTargetException;
 
-    Long clear();
+    <T> T getAllForObj(Class<T> clazz) throws ClassNotFoundException, IllegalAccessException, InstantiationException, InvocationTargetException;
+
+    <T> String putAll(Map<String,T> m);
+
+    boolean clear();
 
     Set<String> keySet();
 
@@ -36,9 +43,9 @@ public interface CacheMap {
 
     <T> Collection<T> values(Class<T> clazz);
 
-    <T> List<T> getAll(Class<T> clazz, Object... fields);
+    <T> List<T> getAll(Class<T> clazz, String... fields);
 
-    <V> Long putIfAbsent(Object field, V value);
+    <V> boolean putIfAbsent(Object field, V value);
 
 //    /**
 //     * 缓存勾搭数据源查询，混合使用方法

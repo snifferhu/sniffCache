@@ -9,36 +9,46 @@
           http://www.springframework.org/schema/context
           http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
-  <context:property-placeholder ignore-unresolvable="true" location="classpath:redis.properties"/>
+    <context:property-placeholder ignore-unresolvable="true" location="classpath:redis.properties"/>
 
-  <!-- jedisPool配置信息 -->
-  <bean id="jedisPoolConfig" class="redis.clients.jedis.JedisPoolConfig">
-    <property name="maxTotal" value="${redis.maxTotal}"/>
-    <!-- 控制一个pool可分配多少个jedis实例 -->
-    <property name="maxIdle" value="${redis.maxIdle}"/>
-    <!-- 控制一个pool最多有多少个状态为idle(空闲)的jedis实例 -->
-    <property name="minIdle" value="${redis.minIdle}"/>
-    <!-- 控制一个pool初始化的jedis实例 -->
-    <property name="maxWaitMillis" value="${redis.maxWait}"/>
-    <!-- 表示当borrow一个jedis实例时，最大的等待时间，如果超过等待时间，则直接抛出JedisConnectionException -->
-    <property name="testOnBorrow" value="true"/>
-    <!-- 在borrow一个jedis实例时，是否提前进行validate操作；如果为true，则得到的jedis实例均是可用的 -->
-  </bean>
+    <!-- jedisPool配置信息 -->
+    <bean id="jedisPoolConfig" class="redis.clients.jedis.JedisPoolConfig">
+        <property name="maxTotal" value="${redis.maxTotal}"/>
+        <!-- 控制一个pool可分配多少个jedis实例 -->
+        <property name="maxIdle" value="${redis.maxIdle}"/>
+        <!-- 控制一个pool最多有多少个状态为idle(空闲)的jedis实例 -->
+        <property name="minIdle" value="${redis.minIdle}"/>
+        <!-- 控制一个pool初始化的jedis实例 -->
+        <property name="maxWaitMillis" value="${redis.maxWait}"/>
+        <!-- 表示当borrow一个jedis实例时，最大的等待时间，如果超过等待时间，则直接抛出JedisConnectionException -->
+        <property name="testOnBorrow" value="true"/>
+        <!-- 在borrow一个jedis实例时，是否提前进行validate操作；如果为true，则得到的jedis实例均是可用的 -->
+    </bean>
 
-  <bean id="shardedJedisPool" class="redis.clients.jedis.ShardedJedisPool"  scope="singleton">
-    <constructor-arg index="0" ref="jedisPoolConfig" />
-    <constructor-arg index="1">
-      <list>
-        <bean class="redis.clients.jedis.JedisShardInfo">
-          <constructor-arg index="0" value="127.0.0.1"/>
-          <constructor-arg index="1" value="6378" type="int"/>
-        </bean>
-        <bean class="redis.clients.jedis.JedisShardInfo">
-          <constructor-arg index="0" value="127.0.0.1"/>
-          <constructor-arg index="1" value="6377" type="int"/>
-        </bean>
-      </list>
-    </constructor-arg>
-  </bean>
+    <bean id="shardedJedisPool" class="redis.clients.jedis.ShardedJedisPool" scope="singleton">
+        <constructor-arg index="0" ref="jedisPoolConfig"/>
+        <constructor-arg index="1">
+            <list>
+                <bean class="redis.clients.jedis.JedisShardInfo">
+                    <constructor-arg index="0" value="127.0.0.1"/>
+                    <constructor-arg index="1" value="6378" type="int"/>
+                </bean>
+                <bean class="redis.clients.jedis.JedisShardInfo">
+                    <constructor-arg index="0" value="127.0.0.1"/>
+                    <constructor-arg index="1" value="6377" type="int"/>
+                </bean>
+            </list>
+        </constructor-arg>
+    </bean>
 
+    <bean id="gsonSerializer" class="org.sniff.common.util.GsonSerializer"/>
+
+    <bean id="adapter" class="org.sniff.cache.adapter.ShardedJedisAdapter">
+        <property name="pool" ref="shardedJedisPool" />
+    </bean>
+
+    <bean id="cacheTemplate" class="org.sniff.cache.template.CacheTemplateImpl">
+        <property name="adapter" ref="adapter"/>
+        <property name="serial" ref="gsonSerializer" />
+    </bean>
 </beans>

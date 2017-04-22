@@ -1,12 +1,14 @@
 package org.sniff.cache.map;
 
-import com.google.gson.Gson;
 import org.apache.commons.lang.StringUtils;
 import org.sniff.cache.adapter.JedisAdapter;
 import org.sniff.cache.adapter.JedisAdapterAware;
 import org.sniff.cache.template.KeyData;
+import org.sniff.common.util.CacheSerializer;
 import redis.clients.jedis.ScanResult;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -18,11 +20,12 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
     private JedisAdapter jedisAdapter;
     private String cacheKey;
-    private static Gson gson = new Gson();
+    private CacheSerializer serial;
 
-    public CacheMapImpl(JedisAdapter jedisAdapter, String cacheKey) {
+    public CacheMapImpl(JedisAdapter jedisAdapter, String cacheKey, CacheSerializer serial) {
         this.jedisAdapter = jedisAdapter;
         this.cacheKey = cacheKey;
+        this.serial = serial;
     }
 
     public JedisAdapter getJedisAdapter() {
@@ -60,45 +63,96 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
     }
 
     @Override
+    public String get(Object field) {
+        String value;
+        if (field instanceof String) {
+            value = jedisAdapter.hget(cacheKey, String.valueOf(field));
+        } else {
+            value = jedisAdapter.hget(cacheKey, serial.to(field));
+        }
+        return value;
+    }
+
+    @Override
     public <T> T get(Object field, Class<T> clazz) {
         String value;
         if (field instanceof String) {
             value = jedisAdapter.hget(cacheKey, String.valueOf(field));
         } else {
-            value = jedisAdapter.hget(cacheKey, gson.toJson(field));
+            value = jedisAdapter.hget(cacheKey, serial.to(field));
         }
 
-        if (StringUtils.isBlank(value)) {
-            return gson.fromJson(value, clazz);
+        if (StringUtils.isNotBlank(value)) {
+            return serial.from(value, clazz);
         } else {
             return null;
         }
     }
 
     @Override
-    public <T> Long put(Object field, T value) {
+    public <T> boolean put(Object field, T value) {
+        String targetField;
+        String targetValue;
         if (field instanceof String) {
-            return jedisAdapter.hset(cacheKey, String.valueOf(field), gson.toJson(value));
+            targetField = String.valueOf(field);
         } else {
-            return jedisAdapter.hset(cacheKey, gson.toJson(field), gson.toJson(value));
+            targetField = serial.to(field);
         }
+
+        if (value instanceof String) {
+            targetValue = String.valueOf(value);
+        } else {
+            targetValue = serial.to(value);
+        }
+
+        return jedisAdapter.hset(cacheKey, targetField, targetValue) == 1L;
     }
 
     @Override
-    public Long remove(String... field) {
-        return jedisAdapter.hdel(cacheKey, field);
+    public boolean remove(String... field) {
+        return jedisAdapter.hdel(cacheKey, field) == 1L;
     }
 
 
     @Override
-    public <V> String putAll(Map<String, V> m) {
+    public <T> String putAllForObj(T m) throws IllegalAccessException, NoSuchMethodException, InvocationTargetException {
+//        Map<String, String> copyMap = BeanUtils.describe(m);
+//        copyMap.remove("class");
+
+        return putAllMap(serial.from(serial.to(m),new LinkedHashMap<String,String>().getClass()));
+//        return putAllMap(copyMap);
+    }
+
+    /**
+     * @param clazz
+     * @param <T>
+     * @return
+     * @todo
+     */
+    @Override
+    public <T> T getAllForObj(Class<T> clazz) throws InvocationTargetException, IllegalAccessException, InstantiationException {
+        Field[] fields = clazz.getDeclaredFields();
+        Map<String, String> resultValue = new HashMap<>();
+        for (int i = 0, size = fields.length; i < size; i++) {
+            String field = fields[i].getName();
+            resultValue.put(field, jedisAdapter.hget(cacheKey, field).replaceAll("\"",""));
+        }
+        return serial.from(serial.to(resultValue), clazz);
+    }
+
+    @Override
+    public <T> String putAll(Map<String, T> m) {
+        return putAllMap(m);
+    }
+
+    private <V> String putAllMap(Map<String, V> m) {
         Map<String, String> transformMap = new HashMap<>();
         if (m != null) {
             if (m.values().toArray()[0] instanceof String) {
-                return jedisAdapter.hmset(cacheKey, transformMap);
+                return jedisAdapter.hmset(cacheKey, (Map<String, String>) m);
             }
             for (Entry<String, V> entry : m.entrySet()) {
-                transformMap.put(entry.getKey(), gson.toJson(entry.getValue()));
+                transformMap.put(entry.getKey(), serial.to(entry.getValue()));
             }
             return jedisAdapter.hmset(cacheKey, transformMap);
         }
@@ -107,8 +161,8 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
 
     @Override
-    public Long clear() {
-        return jedisAdapter.del(cacheKey);
+    public boolean clear() {
+        return jedisAdapter.del(cacheKey) == 1L;
     }
 
 
@@ -126,7 +180,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
         Set<T> valueSet = new HashSet<>();
         for (String value : cacheValue) {
-            valueSet.add(gson.fromJson(value, clazz));
+            valueSet.add(serial.from(value, clazz));
         }
         return valueSet;
     }
@@ -145,7 +199,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
         List<T> valueList = new ArrayList<>();
         for (String value : cacheValue) {
-            valueList.add(gson.fromJson(value, clazz));
+            valueList.add(serial.from(value, clazz));
         }
         return valueList;
     }
@@ -154,7 +208,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
     @Override
     public boolean containsValue(Object value) {
         ScanResult<Entry<String, String>> scanResult = jedisAdapter.hscan(cacheKey, "0");
-        return scanOne(scanResult, gson.toJson(value));
+        return scanOne(scanResult, serial.to(value));
     }
 
     private boolean scanOne(ScanResult<Entry<String, String>> scanResult, String value) {
@@ -172,9 +226,27 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
     }
 
     @Override
-    public <T> List<T> getAll(Class<T> clazz, Object... fields) {
-        ScanResult<Entry<String, String>> scanResult = jedisAdapter.hscan(cacheKey, "0");
-        return scanAll(scanResult, clazz, fields);
+    public <T> List<T> getAll(Class<T> clazz, String... fields) {
+        if (fields == null) {
+            return null;
+        }
+        List<String> tmpResults;
+        if (!(fields[0] instanceof String)) {
+            String[] tmpFields = new String[fields.length];
+            for (int i = 0, size = fields.length; i < size; i++) {
+                tmpFields[i] = serial.to(fields[i]);
+            }
+        }
+        tmpResults = jedisAdapter.hmget(cacheKey, fields);
+        if (tmpResults != null && tmpResults.size() != 0) {
+            List<T> results = new ArrayList<>(tmpResults.size());
+            for (String result : tmpResults) {
+                results.add(serial.from(result, clazz));
+            }
+            return results;
+        } else {
+            return null;
+        }
     }
 
     private <T> List<T> scanAll(ScanResult<Entry<String, String>> scanResult, Class<T> clazz, Object... fields) {
@@ -182,9 +254,9 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         for (Entry<String, String> entry : scanResult.getResult()) {
             for (Object field : fields) {
                 if (field instanceof String && entry.getKey().equals(field)) {
-                    resultList.add(gson.fromJson(entry.getValue(), clazz));
-                } else if (entry.getKey().equals(gson.toJson(field))) {
-                    resultList.add(gson.fromJson(entry.getValue(), clazz));
+                    resultList.add(serial.from(entry.getValue(), clazz));
+                } else if (entry.getKey().equals(serial.to(field))) {
+                    resultList.add(serial.from(entry.getValue(), clazz));
                 }
             }
         }
@@ -197,11 +269,11 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
     }
 
     @Override
-    public <V> Long putIfAbsent(Object field, V value) {
+    public <V> boolean putIfAbsent(Object field, V value) {
         if (field instanceof String) {
-            return jedisAdapter.hsetnx(cacheKey, String.valueOf(field), gson.toJson(value));
+            return jedisAdapter.hsetnx(cacheKey, String.valueOf(field), serial.to(value)) == 1L;
         } else {
-            return jedisAdapter.hsetnx(cacheKey, gson.toJson(field), gson.toJson(value));
+            return jedisAdapter.hsetnx(cacheKey, serial.to(field), serial.to(value)) == 1L;
         }
     }
 }

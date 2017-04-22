@@ -1,5 +1,6 @@
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.sniff.cache.template.CacheTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -16,11 +17,27 @@ import redis.clients.jedis.ShardedJedisPool;
 public class ShardedTestCase {
     @Autowired
     private ShardedJedisPool shardedJedisPool;
+    @Autowired
+    private CacheTemplate template;
 
     @Test
     public void test(){
         ShardedJedis jedis = shardedJedisPool.getResource();
         for (int i = 0;i < 100;i++)
             jedis.set(String.valueOf(i),String.valueOf(i));
+    }
+
+    @Test
+    public void delTest(){
+        ShardedJedis jedis = shardedJedisPool.getResource();
+        for (int i = 0;i < 100;i++)
+            jedis.del(String.valueOf(i));
+    }
+
+    @Test
+    public void mapTest(){
+        template.getMapOperation("map").put("a",1);
+        System.out.println(template.getMapOperation("map").get("a"));
+        shardedJedisPool.getResource().del("map");
     }
 }
