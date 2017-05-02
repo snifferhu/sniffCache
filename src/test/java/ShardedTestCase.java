@@ -29,6 +29,7 @@ public class ShardedTestCase {
 
     @Test
     public void delTest(){
+        System.out.println(System.currentTimeMillis());
         ShardedJedis jedis = shardedJedisPool.getResource();
         for (int i = 0;i < 100;i++)
             jedis.del(String.valueOf(i));

@@ -143,7 +143,12 @@ public class CacheMapImplTest {
 
     @Test
     public void values1() throws Exception {
-
+        template.getMapOperation(cacheKey).clear();
+        template.getMapOperation(cacheKey).put(1, staff);
+        template.getMapOperation(cacheKey).put(2, staff);
+        Collection<Staff> list = template.getMapOperation(cacheKey).values(Staff.class);
+        assertEquals("", 2, list.size());
+        template.getMapOperation(cacheKey).clear();
     }
 
     @Test
@@ -167,12 +172,12 @@ public class CacheMapImplTest {
     }
 
     @Test
-    public void clear() throws Exception{
+    public void clear() throws Exception {
         template.getMapOperation(cacheKey).clear();
     }
 
     @Test
-    public void testTimeUtils(){
+    public void testTimeUtils() {
         System.out.println(TimeUnit.DAYS.toSeconds(1));
     }
 }
