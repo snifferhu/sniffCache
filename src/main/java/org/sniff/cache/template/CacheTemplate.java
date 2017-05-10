@@ -1,6 +1,7 @@
 package org.sniff.cache.template;
 
 import org.sniff.cache.map.CacheMap;
+import org.sniff.cache.value.CacheValue;
 
 /**
  * @auth snifferhu
@@ -8,4 +9,6 @@ import org.sniff.cache.map.CacheMap;
  */
 public interface CacheTemplate {
     <T> CacheMap getMapOperation(T obj);
+
+    <T> CacheValue getValueOperation(T obj);
 }

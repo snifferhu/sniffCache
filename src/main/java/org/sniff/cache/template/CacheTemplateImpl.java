@@ -5,7 +5,7 @@ import org.sniff.cache.map.CacheMap;
 import org.sniff.cache.map.CacheMapImpl;
 import org.sniff.cache.value.CacheValue;
 import org.sniff.cache.value.CacheValueImpl;
-import org.sniff.common.util.CacheSerializer;
+import org.sniff.cache.serializer.CacheSerializer;
 
 /**
  * @auth snifferhu
@@ -13,17 +13,52 @@ import org.sniff.common.util.CacheSerializer;
  */
 public class CacheTemplateImpl implements CacheTemplate {
     private JedisAdapter adapter;
-    private CacheSerializer serial;
+    private CacheSerializer keySerial = null;
+    private CacheSerializer valueSerial = null;
+    private CacheSerializer hKeySerial = null;
+    private CacheSerializer hValueSerial = null;
     private CacheMap map;
     private CacheValue value;
 
-    public CacheSerializer getSerial() {
-        return serial;
+    public CacheTemplateImpl() {
+        init();
     }
 
-    public void setSerial(CacheSerializer serial) {
-        this.serial = serial;
+    private void init() {
     }
+
+    public CacheSerializer getKeySerial() {
+        return keySerial;
+    }
+
+    public void setKeySerial(CacheSerializer keySerial) {
+        this.keySerial = keySerial;
+    }
+
+    public CacheSerializer getValueSerial() {
+        return valueSerial;
+    }
+
+    public void setValueSerial(CacheSerializer valueSerial) {
+        this.valueSerial = valueSerial;
+    }
+
+    public CacheSerializer gethKeySerial() {
+        return hKeySerial;
+    }
+
+    public void sethKeySerial(CacheSerializer hKeySerial) {
+        this.hKeySerial = hKeySerial;
+    }
+
+    public CacheSerializer gethValueSerial() {
+        return hValueSerial;
+    }
+
+    public void sethValueSerial(CacheSerializer hValueSerial) {
+        this.hValueSerial = hValueSerial;
+    }
+
 
     public JedisAdapter getAdapter() {
         return adapter;
@@ -35,18 +70,18 @@ public class CacheTemplateImpl implements CacheTemplate {
 
     public <T> CacheMap getMapOperation(T obj) {
         if (obj instanceof String) {
-            map = new CacheMapImpl<>(this.adapter, String.valueOf(obj), serial);
+            map = new CacheMapImpl<>(this.adapter, String.valueOf(obj), hValueSerial);
         } else {
-            map = new CacheMapImpl<>(this.adapter, serial.to(obj), serial);
+            map = new CacheMapImpl<>(this.adapter, hKeySerial.to(obj), hValueSerial);
         }
         return map;
     }
 
     public <T> CacheValue getValueOperation(T obj) {
         if (obj instanceof String) {
-            value = new CacheValueImpl<>(this.adapter, String.valueOf(obj), serial);
+            value = new CacheValueImpl<>(this.adapter, String.valueOf(obj), hValueSerial);
         } else {
-            value = new CacheValueImpl<>(this.adapter, serial.to(obj), serial);
+            value = new CacheValueImpl<>(this.adapter, hKeySerial.to(obj), hValueSerial);
         }
         return value;
     }

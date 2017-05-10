@@ -4,11 +4,10 @@ import org.apache.commons.lang.StringUtils;
 import org.sniff.cache.adapter.JedisAdapter;
 import org.sniff.cache.adapter.JedisAdapterAware;
 import org.sniff.cache.template.KeyData;
-import org.sniff.common.util.CacheSerializer;
+import org.sniff.cache.serializer.CacheSerializer;
 import redis.clients.jedis.ScanResult;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -20,12 +19,30 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
     private JedisAdapter jedisAdapter;
     private String cacheKey;
-    private CacheSerializer serial;
+    private CacheSerializer hKeySerial = null;
+    private CacheSerializer hValueSerial = null;
 
-    public CacheMapImpl(JedisAdapter jedisAdapter, String cacheKey, CacheSerializer serial) {
+    public CacheMapImpl(JedisAdapter jedisAdapter, String cacheKey, CacheSerializer hKeySerial,CacheSerializer hValueSerial) {
         this.jedisAdapter = jedisAdapter;
         this.cacheKey = cacheKey;
-        this.serial = serial;
+        this.hKeySerial = hKeySerial;
+        this.hValueSerial = hValueSerial;
+    }
+
+    public CacheSerializer gethKeySerial() {
+        return hKeySerial;
+    }
+
+    public void sethKeySerial(CacheSerializer hKeySerial) {
+        this.hKeySerial = hKeySerial;
+    }
+
+    public CacheSerializer gethValueSerial() {
+        return hValueSerial;
+    }
+
+    public void sethValueSerial(CacheSerializer hValueSerial) {
+        this.hValueSerial = hValueSerial;
     }
 
     public JedisAdapter getJedisAdapter() {
@@ -68,7 +85,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         if (field instanceof String) {
             value = jedisAdapter.hget(cacheKey, String.valueOf(field));
         } else {
-            value = jedisAdapter.hget(cacheKey, serial.to(field));
+            value = jedisAdapter.hget(cacheKey, hKeySerial.to(field));
         }
         return value;
     }
@@ -79,11 +96,11 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         if (field instanceof String) {
             value = jedisAdapter.hget(cacheKey, String.valueOf(field));
         } else {
-            value = jedisAdapter.hget(cacheKey, serial.to(field));
+            value = jedisAdapter.hget(cacheKey, hKeySerial.to(field));
         }
 
         if (StringUtils.isNotBlank(value)) {
-            return serial.from(value, clazz);
+            return hValueSerial.from(value, clazz);
         } else {
             return null;
         }
@@ -96,13 +113,13 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         if (field instanceof String) {
             targetField = String.valueOf(field);
         } else {
-            targetField = serial.to(field);
+            targetField = hKeySerial.to(field);
         }
 
         if (value instanceof String) {
             targetValue = String.valueOf(value);
         } else {
-            targetValue = serial.to(value);
+            targetValue = hValueSerial.to(value);
         }
 
         return jedisAdapter.hset(cacheKey, targetField, targetValue) == 1L;
@@ -113,10 +130,9 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         return jedisAdapter.hdel(cacheKey, field) == 1L;
     }
 
-
     @Override
-    public <T> String putAllForObj(T m) throws IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-        return putAllMap(serial.from(serial.to(m), new LinkedHashMap<String, String>().getClass()));
+    public <T> String putAllForObj(T m) {
+        return putAllMap(hValueSerial.from(hValueSerial.to(m), new HashMap<String, String>().getClass()));
     }
 
     /**
@@ -126,14 +142,14 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
      * @todo
      */
     @Override
-    public <T> T getAllForObj(Class<T> clazz) throws InvocationTargetException, IllegalAccessException, InstantiationException {
+    public <T> T getAllForObj(Class<T> clazz) {
         Field[] fields = clazz.getDeclaredFields();
         Map<String, String> resultValue = new HashMap<>();
         for (int i = 0, size = fields.length; i < size; i++) {
             String field = fields[i].getName();
             resultValue.put(field, jedisAdapter.hget(cacheKey, field).replaceAll("\"", ""));
         }
-        return serial.from(serial.to(resultValue), clazz);
+        return hValueSerial.from(hValueSerial.to(resultValue), clazz);
     }
 
     @Override
@@ -148,7 +164,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
                 return jedisAdapter.hmset(cacheKey, (Map<String, String>) m);
             }
             for (Entry<String, V> entry : m.entrySet()) {
-                transformMap.put(entry.getKey(), serial.to(entry.getValue()));
+                transformMap.put(entry.getKey(), hValueSerial.to(entry.getValue()));
             }
             return jedisAdapter.hmset(cacheKey, transformMap);
         }
@@ -176,7 +192,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
         Set<T> valueSet = new HashSet<>();
         for (String value : cacheValue) {
-            valueSet.add(serial.from(value, clazz));
+            valueSet.add(hValueSerial.from(value, clazz));
         }
         return valueSet;
     }
@@ -195,7 +211,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
 
         List<T> valueList = new ArrayList<>();
         for (String value : cacheValue) {
-            valueList.add(serial.from(value, clazz));
+            valueList.add(hValueSerial.from(value, clazz));
         }
         return valueList;
     }
@@ -204,7 +220,7 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
     @Override
     public boolean containsValue(Object value) {
         ScanResult<Entry<String, String>> scanResult = jedisAdapter.hscan(cacheKey, "0");
-        return scanOne(scanResult, serial.to(value));
+        return scanOne(scanResult, hValueSerial.to(value));
     }
 
     private boolean scanOne(ScanResult<Entry<String, String>> scanResult, String value) {
@@ -230,14 +246,14 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         if (!(fields[0] instanceof String)) {
             String[] tmpFields = new String[fields.length];
             for (int i = 0, size = fields.length; i < size; i++) {
-                tmpFields[i] = serial.to(fields[i]);
+                tmpFields[i] = hKeySerial.to(fields[i]);
             }
         }
         tmpResults = jedisAdapter.hmget(cacheKey, fields);
         if (tmpResults != null && tmpResults.size() != 0) {
             List<T> results = new ArrayList<>(tmpResults.size());
             for (String result : tmpResults) {
-                results.add(serial.from(result, clazz));
+                results.add(hValueSerial.from(result, clazz));
             }
             return results;
         } else {
@@ -250,9 +266,9 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
         for (Entry<String, String> entry : scanResult.getResult()) {
             for (Object field : fields) {
                 if (field instanceof String && entry.getKey().equals(field)) {
-                    resultList.add(serial.from(entry.getValue(), clazz));
-                } else if (entry.getKey().equals(serial.to(field))) {
-                    resultList.add(serial.from(entry.getValue(), clazz));
+                    resultList.add(hValueSerial.from(entry.getValue(), clazz));
+                } else if (entry.getKey().equals(hKeySerial.to(field))) {
+                    resultList.add(hValueSerial.from(entry.getValue(), clazz));
                 }
             }
         }
@@ -267,9 +283,18 @@ public class CacheMapImpl<K, V> implements CacheMap, JedisAdapterAware, KeyData 
     @Override
     public <V> boolean putIfAbsent(Object field, V value) {
         if (field instanceof String) {
-            return jedisAdapter.hsetnx(cacheKey, String.valueOf(field), serial.to(value)) == 1L;
+            return jedisAdapter.hsetnx(cacheKey, String.valueOf(field), hValueSerial.to(value)) == 1L;
         } else {
-            return jedisAdapter.hsetnx(cacheKey, serial.to(field), serial.to(value)) == 1L;
+            return jedisAdapter.hsetnx(cacheKey, hKeySerial.to(field), hValueSerial.to(value)) == 1L;
+        }
+    }
+
+    @Override
+    public long incrBy(Object field, long value) {
+        if (field instanceof String) {
+            return jedisAdapter.hincrBy(cacheKey, String.valueOf(field), value);
+        } else {
+            return jedisAdapter.hincrBy(cacheKey, hKeySerial.to(field), value);
         }
     }
 }

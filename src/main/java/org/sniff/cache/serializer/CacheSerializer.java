@@ -1,4 +1,4 @@
-package org.sniff.common.util;
+package org.sniff.cache.serializer;
 
 /**
  * @auth snifferhu
@@ -8,5 +8,5 @@ public interface CacheSerializer {
 
     <T> String to(T t);
 
-    <R> R from(String value,Class<R> clazz);
+    <T> T from(String value,Class<T> clazz);
 }

@@ -41,7 +41,7 @@
         </constructor-arg>
     </bean>
 
-    <bean id="gsonSerializer" class="org.sniff.common.util.GsonSerializer"/>
+    <bean id="gsonSerializer" class="org.sniff.cache.serializer.impl.GsonSerializer"/>
 
     <bean id="adapter" class="org.sniff.cache.adapter.ShardedJedisAdapter">
         <property name="pool" ref="shardedJedisPool" />

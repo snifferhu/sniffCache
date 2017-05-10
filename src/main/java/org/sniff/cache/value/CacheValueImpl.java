@@ -1,7 +1,7 @@
 package org.sniff.cache.value;
 
 import org.sniff.cache.adapter.JedisAdapter;
-import org.sniff.common.util.CacheSerializer;
+import org.sniff.cache.serializer.CacheSerializer;
 
 import java.util.concurrent.TimeUnit;
 

@@ -2,6 +2,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.sniff.cache.template.CacheTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import redis.clients.jedis.ShardedJedis;
@@ -19,6 +20,8 @@ public class ShardedTestCase {
     private ShardedJedisPool shardedJedisPool;
     @Autowired
     private CacheTemplate template;
+
+    private RedisTemplate redisTemplate;
 
     @Test
     public void test(){
