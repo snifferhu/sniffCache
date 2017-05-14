@@ -12,12 +12,12 @@ import java.util.concurrent.TimeUnit;
 public class CacheValueImpl<V> implements CacheValue<V> {
     private JedisAdapter adapter;
     private String cacheKey;
-    private CacheSerializer serial;
+    private CacheSerializer valueSerial;
 
     public CacheValueImpl(JedisAdapter jedisAdapter, String cacheKey, CacheSerializer serial) {
         this.adapter = jedisAdapter;
         this.cacheKey = cacheKey;
-        this.serial = serial;
+        this.valueSerial = serial;
     }
 
 
@@ -26,7 +26,7 @@ public class CacheValueImpl<V> implements CacheValue<V> {
         if (o instanceof String) {
             return adapter.set(cacheKey, String.valueOf(o));
         }
-        return adapter.set(cacheKey, serial.to(o));
+        return adapter.set(cacheKey, valueSerial.to(o));
     }
 
     @Override
@@ -34,7 +34,7 @@ public class CacheValueImpl<V> implements CacheValue<V> {
         if (o instanceof String) {
             return adapter.setex(cacheKey, second, String.valueOf(o));
         }
-        return adapter.setex(cacheKey, second, serial.to(o));
+        return adapter.setex(cacheKey, second, valueSerial.to(o));
     }
 
     @Override
@@ -47,6 +47,6 @@ public class CacheValueImpl<V> implements CacheValue<V> {
         if (o instanceof String) {
             return adapter.setnx(cacheKey, String.valueOf(o)) == 1;
         }
-        return adapter.setnx(cacheKey, serial.to(o)) == 1;
+        return adapter.setnx(cacheKey, valueSerial.to(o)) == 1;
     }
 }

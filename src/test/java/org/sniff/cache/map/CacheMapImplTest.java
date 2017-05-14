@@ -180,4 +180,9 @@ public class CacheMapImplTest {
     public void testTimeUtils() {
         System.out.println(TimeUnit.DAYS.toSeconds(1));
     }
+
+    @Test
+    public void testIncrby(){
+        System.out.println(template.getMapOperation(cacheKey).incrBy("12",1));
+    }
 }

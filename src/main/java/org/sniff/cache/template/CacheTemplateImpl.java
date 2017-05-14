@@ -69,20 +69,10 @@ public class CacheTemplateImpl implements CacheTemplate {
     }
 
     public <T> CacheMap getMapOperation(T obj) {
-        if (obj instanceof String) {
-            map = new CacheMapImpl<>(this.adapter, String.valueOf(obj), hValueSerial);
-        } else {
-            map = new CacheMapImpl<>(this.adapter, hKeySerial.to(obj), hValueSerial);
-        }
-        return map;
+        return new CacheMapImpl<>(this.adapter, hKeySerial.to(obj),hKeySerial, hValueSerial);
     }
 
     public <T> CacheValue getValueOperation(T obj) {
-        if (obj instanceof String) {
-            value = new CacheValueImpl<>(this.adapter, String.valueOf(obj), hValueSerial);
-        } else {
-            value = new CacheValueImpl<>(this.adapter, hKeySerial.to(obj), hValueSerial);
-        }
-        return value;
+        return new CacheValueImpl<>(this.adapter, keySerial.to(obj), valueSerial);
     }
 }

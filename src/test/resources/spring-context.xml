@@ -47,6 +47,9 @@
 
     <bean id="cacheTemplate" class="org.sniff.cache.template.CacheTemplateImpl">
         <property name="adapter" ref="adapter"/>
-        <property name="serial" ref="gsonSerializer" />
+        <property name="keySerial" ref="gsonSerializer" />
+        <property name="valueSerial" ref="gsonSerializer" />
+        <property name="hKeySerial" ref="gsonSerializer" />
+        <property name="hValueSerial" ref="gsonSerializer" />
     </bean>
 </beans>
