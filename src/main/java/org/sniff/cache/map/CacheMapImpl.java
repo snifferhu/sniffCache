@@ -3,8 +3,8 @@ package org.sniff.cache.map;
 import org.apache.commons.lang.StringUtils;
 import org.sniff.cache.adapter.JedisAdapter;
 import org.sniff.cache.adapter.JedisAdapterAware;
-import org.sniff.cache.template.KeyData;
 import org.sniff.cache.serializer.CacheSerializer;
+import org.sniff.cache.template.KeyData;
 import redis.clients.jedis.ScanResult;
 
 import java.lang.reflect.Field;
